@@ -42,7 +42,7 @@ exports.getUsers = async (req, res) => {
 
 exports.createUser = async (req, res) => {
   try {
-    const { name, email, role, warehouse, status, permissions } = req.body;
+    const { name, email, password, role, warehouse, status, permissions } = req.body;
     
     // Check if user exists
     const existingUser = await User.findOne({ email });
@@ -50,14 +50,18 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'User with this email already exists' });
     }
 
+    if (!password) {
+      return res.status(400).json({ success: false, message: 'Password is required' });
+    }
+
     const user = new User({
       name,
       email,
-      password: 'password123', // Default simple password for demo
-      role,
-      warehouse,
-      status,
-      permissions
+      password,
+      role: role || 'Admin',
+      warehouse: warehouse || 'All Warehouses',
+      status: status || 'Active',
+      permissions: permissions || []
     });
 
     await user.save();
@@ -75,7 +79,7 @@ exports.createUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, role, warehouse, status, permissions } = req.body;
+    const { name, email, password, role, warehouse, status, permissions } = req.body;
 
     const user = await User.findById(id);
     if (!user) {
@@ -84,6 +88,9 @@ exports.updateUser = async (req, res) => {
 
     user.name = name || user.name;
     user.email = email || user.email;
+    if (password && password.trim() !== '') {
+      user.password = password;
+    }
     user.role = role || user.role;
     user.warehouse = warehouse || user.warehouse;
     user.status = status || user.status;
@@ -109,7 +116,7 @@ exports.deleteUser = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
     
-    if (user.role === 'Super Admin') {
+    if (user.role === 'Super Admin' || user.role === 'superadmin') {
       return res.status(400).json({ success: false, message: 'Cannot delete Super Admin user' });
     }
 
