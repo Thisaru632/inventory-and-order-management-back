@@ -57,11 +57,19 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Tool Link Inventory Backend API is live' });
 });
 
-// Routes
+// Routes (mount on both /api/xxx and /xxx for flexible serverless proxying)
 app.use('/api/inventory', inventoryRoutes);
+app.use('/inventory', inventoryRoutes);
+
 app.use('/api/deliveries', deliveryRoutes);
-app.use('/api/master-data', require('./routes/masterDataRoutes'));
+app.use('/deliveries', deliveryRoutes);
+
+const masterDataRoutes = require('./routes/masterDataRoutes');
+app.use('/api/master-data', masterDataRoutes);
+app.use('/master-data', masterDataRoutes);
+
 app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
