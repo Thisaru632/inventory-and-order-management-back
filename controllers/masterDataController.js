@@ -13,11 +13,11 @@ exports.getStores = async (req, res) => {
 
 exports.createStore = async (req, res) => {
   try {
-    const { name, code, address, capacity, manager, isActive } = req.body;
+    const { name, code, address, capacity, manager, isActive, image } = req.body;
     if (!name || !code) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
-    const newStore = new Store({ name, code, address, capacity, manager, isActive });
+    const newStore = new Store({ name, code, address, capacity, manager, isActive, image });
     await newStore.save();
     res.status(201).json({ success: true, data: newStore });
   } catch (error) {

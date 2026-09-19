@@ -6,6 +6,7 @@ const storeSchema = new mongoose.Schema({
   address: { type: String },
   capacity: { type: String },
   manager: { type: String },
+  image: { type: String },
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 
