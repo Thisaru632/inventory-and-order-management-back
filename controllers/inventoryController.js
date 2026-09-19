@@ -133,7 +133,15 @@ exports.getStoreStock = async (req, res) => {
     
     if (storeId) query.store = storeId;
     if (warehouseName) {
-      const storeDoc = await Store.findOne({ name: warehouseName });
+      const escaped = warehouseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const firstWord = escaped.split(' ')[0];
+      const storeDoc = await Store.findOne({
+        $or: [
+          { name: warehouseName },
+          { name: { $regex: new RegExp(`^${escaped}$`, 'i') } },
+          { name: { $regex: new RegExp(firstWord, 'i') } }
+        ]
+      });
       if (storeDoc) {
         query.store = storeDoc._id;
       } else {
@@ -161,7 +169,15 @@ exports.getTransactionHistory = async (req, res) => {
 
     if (storeId) query.store = storeId;
     if (warehouseName) {
-      const storeDoc = await Store.findOne({ name: warehouseName });
+      const escaped = warehouseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const firstWord = escaped.split(' ')[0];
+      const storeDoc = await Store.findOne({
+        $or: [
+          { name: warehouseName },
+          { name: { $regex: new RegExp(`^${escaped}$`, 'i') } },
+          { name: { $regex: new RegExp(firstWord, 'i') } }
+        ]
+      });
       if (storeDoc) {
         query.store = storeDoc._id;
       } else {
