@@ -57,6 +57,27 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Tool Link Inventory Backend API is live' });
 });
 
+app.get('/api/db-status', async (req, res) => {
+  const hasUri = !!process.env.MONGODB_URI;
+  const maskedUri = process.env.MONGODB_URI 
+    ? process.env.MONGODB_URI.replace(/:([^:@]+)@/, ':****@') 
+    : 'MISSING_IN_VERCEL_ENV';
+  
+  let connectError = null;
+  try {
+    await connectDB();
+  } catch (err) {
+    connectError = err.message;
+  }
+
+  res.json({
+    hasUri,
+    maskedUri,
+    readyState: require('mongoose').connection.readyState,
+    connectError,
+  });
+});
+
 // Routes (mount on both /api/xxx and /xxx for flexible serverless proxying)
 app.use('/api/inventory', inventoryRoutes);
 app.use('/inventory', inventoryRoutes);
