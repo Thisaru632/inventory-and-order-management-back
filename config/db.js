@@ -1,14 +1,11 @@
 const mongoose = require('mongoose');
 const dns = require('dns');
 
-// Fix for Node.js querySrv EBADRESP on local ISP/Windows machines
-// (Do NOT override DNS on Vercel, as AWS Lambda blocks external UDP port 53)
-if (!process.env.VERCEL) {
-  try {
-    dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
-  } catch (e) {
-    // Continue with default DNS if custom DNS cannot be set
-  }
+// Fix for Node.js querySrv EBADRESP when ISP/local DNS fails on MongoDB Atlas SRV records
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch (e) {
+  // Continue with default DNS if custom DNS cannot be set
 }
 
 const connectDB = async () => {
@@ -36,7 +33,6 @@ const connectDB = async () => {
   try {
     const conn = await mongoose.connect(uri, {
       dbName: 'inventory_db',
-      serverSelectionTimeoutMS: 5000,
     });
     console.log(`MongoDB Connected: ${conn.connection.host}`);
     return conn;
