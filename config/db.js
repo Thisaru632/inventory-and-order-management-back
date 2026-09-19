@@ -9,24 +9,39 @@ try {
 }
 
 const connectDB = async () => {
-  try {
-    const uri = process.env.MONGODB_URI;
-    if (!uri) {
-      console.error('Error: MONGODB_URI is not defined. Please configure it in your .env file.');
-      process.exit(1);
-    }
-    if (uri.includes('<db_password>')) {
-      console.error('Error: Please replace "<db_password>" in your .env file with your actual MongoDB database password.');
-      process.exit(1);
-    }
+  if (mongoose.connection.readyState >= 1) {
+    return mongoose.connection;
+  }
 
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    console.error('Error: MONGODB_URI is not defined. Please configure it in your environment variables.');
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
+    throw new Error('MONGODB_URI is not defined in environment variables');
+  }
+
+  if (uri.includes('<db_password>')) {
+    console.error('Error: Please replace "<db_password>" with your actual MongoDB database password.');
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
+    throw new Error('MongoDB password placeholder <db_password> must be replaced');
+  }
+
+  try {
     const conn = await mongoose.connect(uri, {
-      dbName: 'inventory_db', // Provide a dbName to avoid writing to default 'test'
+      dbName: 'inventory_db',
     });
     console.log(`MongoDB Connected: ${conn.connection.host}`);
+    return conn;
   } catch (error) {
-    console.error(`Error: ${error.message}`);
-    process.exit(1);
+    console.error(`MongoDB Connection Error: ${error.message}`);
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
+    throw error;
   }
 };
 
