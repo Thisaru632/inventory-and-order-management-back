@@ -1,6 +1,7 @@
 const Store = require('../models/Store');
 const Material = require('../models/Material');
 const Supplier = require('../models/Supplier');
+const Inventory = require('../models/Inventory');
 
 exports.getStores = async (req, res) => {
   try {
@@ -84,6 +85,37 @@ exports.createMaterial = async (req, res) => {
     if (error.code === 11000) {
       return res.status(400).json({ success: false, message: 'SKU already exists' });
     }
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+};
+
+exports.updateMaterial = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, minStockAlert, sku, category, baseUnit } = req.body;
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (minStockAlert !== undefined) updateData.minStockAlert = minStockAlert;
+    if (sku !== undefined) updateData.sku = sku;
+    if (category !== undefined) updateData.category = category;
+    if (baseUnit !== undefined) updateData.baseUnit = baseUnit;
+
+    const material = await Material.findByIdAndUpdate(id, updateData, { new: true });
+    if (!material) return res.status(404).json({ success: false, message: 'Material not found' });
+    res.status(200).json({ success: true, data: material });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+};
+
+exports.deleteMaterial = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const material = await Material.findByIdAndDelete(id);
+    if (!material) return res.status(404).json({ success: false, message: 'Material not found' });
+    await Inventory.deleteMany({ material: id });
+    res.status(200).json({ success: true, message: 'Material deleted' });
+  } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
 };
