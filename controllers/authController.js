@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const bcrypt = require('bcryptjs');
 
 exports.login = async (req, res) => {
   try {
@@ -9,7 +10,19 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    if (password !== user.password) {
+    let isMatch = false;
+    if (user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$'))) {
+      isMatch = await bcrypt.compare(password, user.password);
+    } else {
+      // Fallback for unhashed legacy password & auto-hash
+      if (password === user.password) {
+        isMatch = true;
+        user.password = password;
+        await user.save();
+      }
+    }
+
+    if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 

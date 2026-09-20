@@ -6,8 +6,29 @@ const inventoryRoutes = require('./routes/inventoryRoutes');
 const deliveryRoutes = require('./routes/deliveryRoutes');
 const authRoutes = require('./routes/authRoutes');
 const User = require('./models/User');
+const bcrypt = require('bcryptjs');
 
 const app = express();
+
+// Migrate existing unencrypted passwords in database
+const migrateExistingPasswords = async () => {
+  try {
+    const users = await User.find({});
+    const toMigrate = users.filter(u => u.password && !u.password.startsWith('$2a$') && !u.password.startsWith('$2b$'));
+
+    if (toMigrate.length > 0) {
+      console.log(`Migrating ${toMigrate.length} user password(s) to encrypted format...`);
+      for (const u of toMigrate) {
+        const salt = await bcrypt.genSalt(10);
+        u.password = await bcrypt.hash(u.password, salt);
+        await u.save();
+      }
+      console.log('All existing passwords migrated successfully to encrypted format.');
+    }
+  } catch (err) {
+    console.error('Password migration error:', err.message);
+  }
+};
 
 // Seed superadmin user
 const seedSuperAdmin = async () => {
@@ -22,9 +43,17 @@ const seedSuperAdmin = async () => {
   }
 };
 
+let isMigrated = false;
+const runMigrations = async () => {
+  if (isMigrated) return;
+  await migrateExistingPasswords();
+  await seedSuperAdmin();
+  isMigrated = true;
+};
+
 // Connect Database initially
 connectDB().then(() => {
-  seedSuperAdmin();
+  runMigrations();
 }).catch((err) => {
   console.error('Initial DB connection error:', err.message);
 });
@@ -50,6 +79,9 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(async (req, res, next) => {
   try {
     await connectDB();
+    if (!isMigrated) {
+      await runMigrations();
+    }
     next();
   } catch (err) {
     res.status(500).json({ 
@@ -74,6 +106,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/master-data', require('./routes/masterDataRoutes'));
 app.use('/api/auth', authRoutes);
+app.use('/api/sales', require('./routes/saleRoutes'));
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
