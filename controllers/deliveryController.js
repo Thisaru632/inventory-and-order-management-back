@@ -11,7 +11,7 @@ exports.createDelivery = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { customerShopName, customerAddress, storeId, materialId, quantity, unit, notes, status } = req.body;
+    const { customerShopName, customerAddress, storeId, materialId, quantity, unit, notes, status, scheduledDate } = req.body;
 
     if (!customerShopName || !storeId || !materialId || !quantity || !unit) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
@@ -43,6 +43,7 @@ exports.createDelivery = async (req, res) => {
       quantity,
       unit,
       status: status || 'PENDING',
+      scheduledDate: scheduledDate || undefined,
       notes
     });
 
@@ -99,7 +100,7 @@ exports.updateDeliveryStatus = async (req, res) => {
   session.startTransaction();
   try {
     const { id } = req.params;
-    const { status, scheduledDate } = req.body;
+    const { status, scheduledDate, feedback } = req.body;
 
     const delivery = await Delivery.findById(id).session(session);
     if (!delivery) {
@@ -111,8 +112,9 @@ exports.updateDeliveryStatus = async (req, res) => {
       const convertedQuantity = convertToBaseUnit(material, delivery.unit, delivery.quantity);
       
       let inventory = await Inventory.findOne({ store: delivery.store, material: delivery.material }).session(session);
-      if (!inventory || inventory.availableQuantity < convertedQuantity) {
-        throw new Error('Insufficient stock available for dispatch');
+      const available = inventory ? inventory.availableQuantity : 0;
+      if (!inventory || available < convertedQuantity) {
+        throw new Error(`Insufficient stock available for dispatch. Required: ${convertedQuantity} ${material?.baseUnit || delivery.unit}, Available: ${available} ${material?.baseUnit || delivery.unit}`);
       }
 
       const previousBalance = inventory.quantityInBaseUnit;
@@ -136,9 +138,19 @@ exports.updateDeliveryStatus = async (req, res) => {
       delivery.transactionRef = transaction._id;
     }
 
-    delivery.status = status;
+    if (status) {
+      delivery.status = status;
+    }
     if (scheduledDate) {
       delivery.scheduledDate = scheduledDate;
+    }
+    if (feedback) {
+      delivery.feedback = {
+        productRating: Number(feedback.productRating) || 0,
+        sellerRating: Number(feedback.sellerRating) || 0,
+        comment: feedback.comment || '',
+        submittedAt: new Date()
+      };
     }
     await delivery.save({ session });
     
@@ -149,7 +161,7 @@ exports.updateDeliveryStatus = async (req, res) => {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+    res.status(400).json({ success: false, message: error.message || 'Server Error', error: error.message });
   }
 };
 

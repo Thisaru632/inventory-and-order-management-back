@@ -9,6 +9,12 @@ const deliverySchema = new mongoose.Schema({
   unit: { type: String, required: true },
   status: { type: String, enum: ['PENDING', 'DISPATCHED', 'DELIVERED', 'CANCELLED'], default: 'PENDING' },
   scheduledDate: { type: Date },
+  feedback: {
+    productRating: { type: Number, min: 1, max: 5 },
+    sellerRating: { type: Number, min: 1, max: 5 },
+    comment: { type: String, default: '' },
+    submittedAt: { type: Date }
+  },
   transactionRef: { type: mongoose.Schema.Types.ObjectId, ref: 'InventoryTransaction' },
   notes: { type: String },
 }, { timestamps: true });
